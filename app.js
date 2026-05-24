@@ -195,17 +195,32 @@ function renderQuestion() {
   else prevBtn.classList.remove('btn-prev-hidden');
 }
 
+let _selecting = false;
 function selectChoice(letter) {
+  if (_selecting) return;
+  _selecting = true;
+
+  // 回答を確実に保存
   state.answers[state.currentIndex] = letter;
+
   document.querySelectorAll('.choice').forEach((btn, i) => {
     btn.classList.toggle('selected', CHOICES[i].letter === letter);
   });
+
   setTimeout(() => {
+    _selecting = false;
     if (state.currentIndex < THEMES.length - 1) {
       state.currentIndex++;
       renderQuestion();
     } else {
-      finishDiagnosis();
+      // 最後の質問：回答が確実に入っていることを再確認してから遷移
+      if (state.answers[state.currentIndex]) {
+        finishDiagnosis();
+      } else {
+        // 念のためのフォールバック（通常は発生しない）
+        state.answers[state.currentIndex] = letter;
+        finishDiagnosis();
+      }
     }
   }, 300);
 }
@@ -219,10 +234,31 @@ function prevQuestion() {
 
 // ---------- 結果 ----------
 function finishDiagnosis() {
-  // 各テーマに回答とstate情報を付与
+  // 1. 未回答チェック：最初の未回答テーマへ戻す
+  const unansweredIdx = state.answers.findIndex(a => !a);
+  if (unansweredIdx !== -1) {
+    state.currentIndex = unansweredIdx;
+    renderQuestion();
+    showView('diagnosis');
+    const descEl = document.getElementById('diagnosis-theme-desc');
+    const themeName = THEMES[unansweredIdx].name;
+    descEl.innerHTML = `<span style="color: var(--state-a); font-weight: 500;">⚠ 未回答のテーマがあります。「${themeName}」から回答を続けてください。</span>`;
+    return;
+  }
+
+  // 2. 全テーマに有効な回答がある状態
   const themeStates = THEMES.map((theme, i) => {
     const letter = state.answers[i];
-    const choice = CHOICES.find(c => c.letter === letter) || CHOICES[0];
+    const choice = CHOICES.find(c => c.letter === letter);
+    if (!choice || !letter) {
+      // 念のためのnull-safeフォールバック（通常は到達しない）
+      return {
+        theme,
+        letter: 'A',
+        stateLabel: CHOICES[0].stateLabel,
+        stateClass: 'state-a'
+      };
+    }
     return {
       theme,
       letter,
@@ -231,15 +267,31 @@ function finishDiagnosis() {
     };
   });
 
-  // 優先テーマ：B → A の順、最大3件
+  // 3. 優先テーマの判定（A/B → C → all-progressing の3段フォールバック）
   const bThemes = themeStates.filter(t => t.letter === 'B');
   const aThemes = themeStates.filter(t => t.letter === 'A');
-  const priorityList = [...bThemes, ...aThemes].slice(0, 3);
+  const cThemes = themeStates.filter(t => t.letter === 'C');
+
+  let priorityList = [];
+  let priorityMode = '';
+  if (bThemes.length > 0) {
+    priorityList = [...bThemes, ...aThemes].slice(0, 3);
+    priorityMode = 'b-led';
+  } else if (aThemes.length > 0) {
+    priorityList = aThemes.slice(0, 3);
+    priorityMode = 'a-only';
+  } else if (cThemes.length > 0) {
+    priorityList = cThemes.slice(0, 3);
+    priorityMode = 'deepen';
+  } else {
+    priorityMode = 'all-progressing';
+  }
 
   state.priorityThemes = priorityList.map(p => p.theme);
-  state.priorityTheme = priorityList[0] ? priorityList[0].theme : themeStates[0].theme;
+  state.priorityTheme = priorityList[0]
+    ? priorityList[0].theme
+    : (themeStates.find(t => t.letter === 'D') || themeStates[0]).theme;
 
-  // 優先テーマIDのSet
   const priorityIds = new Set(priorityList.map(p => p.theme.id));
 
   // --- リテラシーマップ描画 ---
@@ -257,31 +309,43 @@ function finishDiagnosis() {
     mapEl.appendChild(cell);
   });
 
-  // --- 優先テーマ描画 ---
-  const priorityListEl = document.getElementById('priority-list');
+  // --- 優先テーマ描画（モード別に見出し・リード・本文を切替） ---
+  const priorityTitleEl = document.getElementById('priority-title');
   const priorityLeadEl = document.getElementById('priority-lead');
+  const priorityListEl = document.getElementById('priority-list');
   priorityListEl.innerHTML = '';
 
-  if (priorityList.length === 0) {
-    priorityLeadEl.textContent = 'AまたはBの回答がなく、すべてのテーマで学びが進んでいます。気になるテーマを選んで、見直し・深掘りに進みましょう。';
+  if (priorityMode === 'b-led') {
+    priorityTitleEl.textContent = '今、優先して学ぶとよさそうなテーマ';
+    priorityLeadEl.textContent = '「気になっているけれど入口が見えにくい」テーマは、関心がある分、最初に学ぶ価値があります。';
+  } else if (priorityMode === 'a-only') {
+    priorityTitleEl.textContent = '今、優先して学ぶとよさそうなテーマ';
+    priorityLeadEl.textContent = 'まずは「知識が少ない」テーマから、ゆっくり言葉に触れるところから始めてみませんか？';
+  } else if (priorityMode === 'deepen') {
+    priorityTitleEl.textContent = 'さらに理解を深めるとよさそうなテーマ';
+    priorityLeadEl.textContent = '少し調べたことのあるテーマを、もう一歩深めてみませんか？知識を整理して、自分ごととしてつなげていくタイミングです。';
+  } else {
+    priorityTitleEl.textContent = 'これからの一歩';
+    priorityLeadEl.textContent = '';
+  }
+
+  if (priorityMode === 'all-progressing') {
     const div = document.createElement('div');
     div.className = 'priority-item';
     div.innerHTML = `
       <span class="priority-icon">✨</span>
       <div class="priority-body">
-        <p class="priority-name">すばらしいですね。</p>
-        <p class="priority-desc">10テーマすべてで、学びや対話が始まっています。<br>気持ちの変化に合わせて、定期的に見直していきましょう。</p>
+        <p class="priority-name">すばらしい歩みです。</p>
+        <p class="priority-desc">すでに多くのテーマについて考え始めています。<br>次は、気になるテーマを1つ選んで、信頼できる人と話してみましょう。</p>
       </div>
     `;
     priorityListEl.appendChild(div);
   } else {
-    if (bThemes.length > 0) {
-      priorityLeadEl.textContent = '「気になっているけれど入口が見えにくい」テーマは、関心がある分、最初に学ぶ価値があります。';
-    } else {
-      priorityLeadEl.textContent = 'まずは「知識が少ない」テーマから、ゆっくり言葉に触れるところから始めてみませんか？';
-    }
     priorityList.forEach((p, i) => {
       const icons = ['🌱', '🌿', '✨'];
+      const tagColor = p.letter === 'B' ? 'var(--state-b)'
+                     : p.letter === 'A' ? 'var(--state-a)'
+                     : 'var(--state-c)';
       const div = document.createElement('div');
       div.className = 'priority-item';
       div.innerHTML = `
@@ -289,7 +353,7 @@ function finishDiagnosis() {
         <div class="priority-body">
           <p class="priority-name">
             ${p.theme.name}
-            <span class="priority-state-tag" style="margin-left: 10px; font-size: 11px; padding: 3px 10px; border-radius: 999px; color: #fff; background: ${p.letter === 'B' ? 'var(--state-b)' : 'var(--state-a)'};">${p.stateLabel}</span>
+            <span class="priority-state-tag" style="margin-left: 10px; font-size: 11px; padding: 3px 10px; border-radius: 999px; color: #fff; background: ${tagColor};">${p.stateLabel}</span>
           </p>
           <p class="priority-desc">${p.theme.priorityHint}</p>
         </div>
@@ -337,15 +401,15 @@ function finishDiagnosis() {
 
   // --- 次の一歩 ---
   const nextStepBody = document.getElementById('next-step-body');
-  if (priorityList.length > 0) {
+  if (priorityMode === 'all-progressing') {
     nextStepBody.innerHTML = `
-      まずは「<strong>${state.priorityTheme.name}</strong>」について、<br>
-      最初に知るとよいこと・調べる入口・家族と話す前に考えておくことを、AIナビゲーターと整理してみませんか？
+      気になるテーマを1つ選んで、信頼できる人と話してみませんか？<br>
+      AIナビゲーターと、話す前の整理もできます。
     `;
   } else {
     nextStepBody.innerHTML = `
-      これまでの学びを振り返り、見直したいテーマがないか<br>
-      AIナビゲーターと一緒に整理してみましょう。
+      まずは「<strong>${state.priorityTheme.name}</strong>」について、<br>
+      最初に知るとよいこと・調べる入口・家族と話す前に考えておくことを、AIナビゲーターと整理してみませんか？
     `;
   }
 
@@ -473,6 +537,10 @@ const CHAT_SCENARIOS = {
 
 function startChat() {
   state.chatStep = 0;
+  // null-safe: priorityTheme が未設定なら最初のテーマにフォールバック
+  if (!state.priorityTheme) {
+    state.priorityTheme = THEMES[0];
+  }
   const theme = state.priorityTheme;
   document.getElementById('chat-theme-title').textContent = `「${theme.name}」の学ぶ入口を、整理しましょう`;
   const chatWindow = document.getElementById('chat-window');
