@@ -21,6 +21,7 @@
       <a href="#about" onclick="scrollToSection('about'); return false;">サービスについて</a>
       <a href="#themes" onclick="scrollToSection('themes'); return false;">10のテーマ</a>
       <a href="#flow" onclick="scrollToSection('flow'); return false;">使い方</a>
+      <a href="#" onclick="showView('family'); return false;">家系図をつくる</a>
       <button class="btn btn-primary btn-sm" onclick="startDiagnosis()">診断をはじめる</button>
     </nav>
   </div>
@@ -391,6 +392,141 @@
   </div>
 </section>
 
+<!-- ============== Family Tree（家系図） ============== -->
+<section id="view-family" class="view">
+  <div class="container">
+
+    <div class="family-header">
+      <p class="section-eyebrow">FAMILY CHART</p>
+      <h2 class="family-title">かんたん家系図づくり</h2>
+      <p class="family-lead">
+        相続の手続きや、信託銀行・士業への相談で必ず聞かれる「親族関係」。<br class="sp-br">
+        名前と続柄を入れるだけで、家系図（相関図）をかんたんに作れます。<br class="sp-br">
+        入力した内容は、この端末のブラウザにだけ保存されます。
+      </p>
+    </div>
+
+    <!-- 印刷専用ヘッダー（画面では非表示） -->
+    <div class="family-print-head" id="family-print-head"></div>
+
+    <!-- ツールバー -->
+    <div class="family-toolbar" id="family-toolbar">
+      <div class="family-toolbar-left">
+        <span class="family-save-state" id="family-save-state">未保存</span>
+      </div>
+      <div class="family-toolbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="familyPrint()">🖨 印刷／PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="familyExportJson()">⬇ データ書き出し</button>
+        <button class="btn btn-text" onclick="familyClearAll()">すべて消す</button>
+      </div>
+    </div>
+
+    <!-- 空の状態 -->
+    <div class="family-empty" id="family-empty">
+      <p class="family-empty-icon">🌳</p>
+      <h3 class="family-empty-title">まずは「ご本人」を登録しましょう</h3>
+      <p class="family-empty-desc">
+        家系図の中心になる方（多くの場合はご自身）から始めます。<br>
+        登録すると、配偶者・お子さん・ご両親をどんどん足していけます。
+      </p>
+      <button class="btn btn-primary btn-lg" onclick="familyAddRoot()">
+        ご本人を登録する
+        <span class="btn-arrow">→</span>
+      </button>
+    </div>
+
+    <!-- 家系図キャンバス -->
+    <div class="family-canvas-wrap" id="family-canvas-wrap" style="display:none;">
+      <div class="family-canvas" id="family-canvas">
+        <svg class="family-lines" id="family-lines"></svg>
+        <!-- 人物カードが動的に配置される -->
+      </div>
+      <p class="family-canvas-hint">カードをクリックすると、編集・親族の追加ができます。</p>
+      <p class="family-daishuu-note" id="family-daishuu-note" style="display:none;">
+        <span class="family-daishuu-swatch"></span>
+        金色の点線は<strong>代襲相続</strong>を表します。相続人になるはずの方（お子さん・ご兄弟姉妹）が先に亡くなっている場合、その子が代わりに相続することがあります。<br>
+        ※ 構造を見やすくするための参考表示です。実際の相続人や割合を判定するものではありません。
+      </p>
+    </div>
+
+    <div class="family-actions">
+      <button class="btn btn-text" onclick="showView('lp')">← トップへ戻る</button>
+    </div>
+
+    <div class="notice-box notice-box-small">
+      <p class="notice-body">
+        ※ この家系図は、考えを整理するための補助ツールです。法定相続情報一覧図など、公的な書類としての効力はありません。<br>
+        ※ 入力データはこの端末のブラウザ（localStorage）にのみ保存され、サーバーには送信されません。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 人物 追加・編集パネル -->
+<div class="family-modal" id="family-modal" style="display:none;">
+  <div class="family-modal-overlay" onclick="familyCloseModal()"></div>
+  <div class="family-modal-panel">
+    <button class="family-modal-close" onclick="familyCloseModal()">✕</button>
+    <p class="family-modal-eyebrow" id="family-modal-eyebrow">人物の登録</p>
+    <h3 class="family-modal-title" id="family-modal-title">ご本人</h3>
+
+    <div class="family-form">
+      <label class="family-field">
+        <span class="family-field-label">お名前（ニックネーム可）</span>
+        <input type="text" id="ff-name" class="family-input" placeholder="例：太郎">
+      </label>
+
+      <div class="family-field">
+        <span class="family-field-label">性別</span>
+        <div class="family-radio-row" id="ff-gender">
+          <button type="button" class="family-radio" data-gender="M">男性</button>
+          <button type="button" class="family-radio" data-gender="F">女性</button>
+          <button type="button" class="family-radio" data-gender="other">その他</button>
+        </div>
+      </div>
+
+      <div class="family-field-row">
+        <label class="family-field">
+          <span class="family-field-label">生まれ年（任意）</span>
+          <input type="number" id="ff-birth" class="family-input" placeholder="例：1950">
+        </label>
+        <label class="family-field">
+          <span class="family-field-label">亡くなった年（任意）</span>
+          <input type="number" id="ff-death" class="family-input" placeholder="存命なら空欄">
+        </label>
+      </div>
+
+      <label class="family-field family-field-check">
+        <input type="checkbox" id="ff-deceased">
+        <span>すでに亡くなっている</span>
+      </label>
+
+      <label class="family-field" id="ff-medical-wrap" style="display:none;">
+        <span class="family-field-label">病歴・医療メモ（任意）</span>
+        <textarea id="ff-medical" class="family-input family-textarea" placeholder="例：2018年に脳梗塞、要介護2 など"></textarea>
+        <span class="family-field-hint">相続や手続きで参考になる情報をメモできます。</span>
+      </label>
+
+      <div class="family-form-actions">
+        <button class="btn btn-primary" id="ff-save" onclick="familySavePerson()">保存する</button>
+        <button class="btn btn-text" id="ff-delete" onclick="familyDeletePerson()" style="display:none;">この人を削除</button>
+      </div>
+    </div>
+
+    <!-- 親族を追加（編集時のみ表示） -->
+    <div class="family-relatives" id="family-relatives" style="display:none;">
+      <p class="family-relatives-label">この人に親族を追加</p>
+      <div class="family-relatives-grid">
+        <button class="family-rel-btn" onclick="familyAddRelative('spouse')">＋ 配偶者</button>
+        <button class="family-rel-btn" onclick="familyAddRelative('child')">＋ 子ども</button>
+        <button class="family-rel-btn" onclick="familyAddRelative('father')">＋ 父</button>
+        <button class="family-rel-btn" onclick="familyAddRelative('mother')">＋ 母</button>
+        <button class="family-rel-btn family-rel-btn-full" onclick="familyAddRelative('sibling')">＋ 兄弟姉妹</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </main>
 
 <footer class="site-footer">
@@ -407,5 +543,6 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="family.js"></script>
 </body>
 </html>

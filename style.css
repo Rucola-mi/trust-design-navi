@@ -1013,3 +1013,338 @@ a { color: inherit; text-decoration: none; }
 .footer-logo .logo-mark { color: var(--sage-l); }
 .footer-copy { font-size: 14px; margin-bottom: 32px; }
 .footer-disclaimer { font-size: 12px; line-height: 1.9; opacity: 0.6; }
+
+/* ============== Family Chart（家系図） ============== */
+#view-family { padding: 64px 0 96px; }
+
+.family-header { text-align: center; margin-bottom: 32px; }
+.family-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 30px;
+  color: var(--text);
+  margin: 8px 0 16px;
+}
+.family-lead { color: var(--text-l); font-size: 15px; line-height: 1.9; }
+
+/* ツールバー */
+.family-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+.family-toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.family-save-state { font-size: 13px; color: var(--sage-d); font-weight: 500; }
+
+/* 空の状態 */
+.family-empty {
+  text-align: center;
+  padding: 64px 24px;
+  background: var(--white);
+  border: 1px dashed var(--sage-l);
+  border-radius: var(--radius-md);
+}
+.family-empty-icon { font-size: 48px; margin-bottom: 12px; }
+.family-empty-title { font-size: 20px; margin-bottom: 12px; }
+.family-empty-desc { color: var(--text-l); font-size: 14px; margin-bottom: 28px; line-height: 1.9; }
+
+/* キャンバス */
+.family-canvas-wrap {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 16px;
+  overflow: auto;
+}
+.family-canvas {
+  position: relative;
+  margin: 0 auto;
+  min-width: 100%;
+}
+.family-lines {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+.fc-line-spouse { stroke: var(--peach); stroke-width: 2.5; }
+.fc-line-parent { stroke: var(--sage-l); stroke-width: 2; }
+.fc-line-daishuu { stroke: var(--gold); stroke-width: 2.5; stroke-dasharray: 6 5; }
+
+.family-canvas-hint {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-l);
+  margin-top: 12px;
+}
+.family-daishuu-note {
+  max-width: 640px;
+  margin: 14px auto 0;
+  padding: 12px 16px;
+  background: #FBF5E8;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-l);
+}
+.family-daishuu-note strong { color: var(--gold); }
+.family-daishuu-swatch {
+  display: inline-block;
+  width: 26px;
+  height: 0;
+  vertical-align: middle;
+  margin-right: 8px;
+  border-top: 2.5px dashed var(--gold);
+}
+
+/* 人物カード */
+.fc-card {
+  position: absolute;
+  z-index: 2;
+  width: 168px;
+  height: 96px;
+  box-sizing: border-box;
+  background: var(--white);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  flex-direction: column;
+}
+.fc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--sage);
+}
+.fc-card.gender-M { border-top: 4px solid #7B9DC4; }
+.fc-card.gender-F { border-top: 4px solid var(--peach); }
+.fc-card.gender-other { border-top: 4px solid var(--gold); }
+.fc-card.is-root { box-shadow: 0 0 0 2px var(--sage), var(--shadow-md); }
+.fc-card.is-deceased { background: #F6F4EF; opacity: 0.92; }
+.fc-card.is-deceased .fc-name { color: var(--text-l); }
+
+.fc-card-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.fc-gender { font-size: 16px; color: var(--text-l); }
+.fc-relation {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--sage-d);
+  background: var(--cream-2);
+  padding: 1px 9px;
+  border-radius: 999px;
+  margin-right: auto;
+  white-space: nowrap;
+}
+.fc-badges { display: flex; gap: 4px; }
+.fc-badge {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.fc-badge-root { background: var(--sage); color: #fff; }
+.fc-badge-dead { background: #B0A99A; color: #fff; }
+.fc-badge-daishuu { background: var(--gold); color: #fff; }
+.fc-badge-med { background: var(--cream-2); }
+
+.fc-name {
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-years { font-size: 12px; color: var(--text-l); margin-top: auto; }
+.fc-years-empty { opacity: 0; }
+
+.family-actions { text-align: center; margin-top: 24px; }
+
+/* モーダル */
+.family-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.family-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(61, 74, 66, 0.4);
+  backdrop-filter: blur(2px);
+}
+.family-modal-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--cream);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 32px 28px;
+  animation: fadeIn 0.25s ease;
+}
+.family-modal-close {
+  position: absolute;
+  top: 16px; right: 18px;
+  font-size: 18px;
+  color: var(--text-l);
+  line-height: 1;
+}
+.family-modal-close:hover { color: var(--text); }
+.family-modal-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--sage-d);
+  font-weight: 500;
+  text-transform: uppercase;
+}
+.family-modal-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 22px;
+  margin: 4px 0 24px;
+}
+
+/* フォーム */
+.family-field { display: block; margin-bottom: 18px; }
+.family-field-label { display: block; font-size: 13px; color: var(--text-l); margin-bottom: 6px; }
+.family-field-hint { display: block; font-size: 11px; color: var(--text-l); margin-top: 4px; }
+.family-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  font-family: inherit;
+  font-size: 15px;
+  color: var(--text);
+  transition: border-color 0.2s;
+}
+.family-input:focus { outline: none; border-color: var(--sage); }
+.family-textarea { resize: vertical; min-height: 72px; line-height: 1.7; }
+.family-field-row { display: flex; gap: 12px; }
+.family-field-row .family-field { flex: 1; }
+
+.family-field-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.family-field-check input { width: 16px; height: 16px; accent-color: var(--sage); }
+
+.family-radio-row { display: flex; gap: 8px; }
+.family-radio {
+  flex: 1;
+  padding: 9px 0;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--white);
+  font-size: 14px;
+  color: var(--text-l);
+  transition: all 0.15s;
+}
+.family-radio:hover { border-color: var(--sage-l); }
+.family-radio.selected {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: #fff;
+  font-weight: 500;
+}
+
+.family-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* 親族追加 */
+.family-relatives {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.family-relatives-label { font-size: 13px; color: var(--text-l); margin-bottom: 12px; }
+.family-relatives-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.family-rel-btn {
+  padding: 12px;
+  border: 1.5px solid var(--sage-l);
+  border-radius: 10px;
+  background: var(--white);
+  color: var(--sage-d);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.15s;
+}
+.family-rel-btn:hover { background: var(--sage); color: #fff; border-color: var(--sage); }
+.family-rel-btn-full { grid-column: 1 / -1; }
+
+@media (max-width: 640px) {
+  .family-title { font-size: 24px; }
+  .family-field-row { flex-direction: column; gap: 0; }
+}
+
+/* 印刷専用ヘッダー（画面では隠す） */
+.family-print-head { display: none; }
+
+/* 印刷 */
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+
+  /* チャート以外は全部隠す */
+  .site-header, .site-footer, .nav, .family-toolbar, .family-actions,
+  .family-header, .family-canvas-hint, .family-daishuu-note,
+  .notice-box, .family-modal, .view:not(.active) { display: none !important; }
+
+  body { background: #fff; }
+  #view-family { padding: 0 !important; }
+  .container { max-width: none; padding: 0; }
+
+  /* 印刷ヘッダーを表示 */
+  .family-print-head { display: block; text-align: center; margin-bottom: 8mm; }
+  .family-print-title {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 20px;
+    color: #000;
+    margin-bottom: 4px;
+  }
+  .family-print-meta { font-size: 12px; color: #333; }
+
+  /* キャンバスは枠なし。縮尺はJSがtransformで当てる */
+  .family-canvas-wrap {
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+  }
+  /* 影や色は印刷でも残す */
+  .fc-card { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .family-lines { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
