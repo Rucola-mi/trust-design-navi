@@ -8,6 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Noto+Serif+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<!-- クラウド連携（Supabase）。ビルド不要・CDN読込。window.TDN を用意する。 -->
+<script type="module" src="auth.js"></script>
 </head>
 <body>
 
@@ -23,6 +25,13 @@
       <a href="#flow" onclick="scrollToSection('flow'); return false;">使い方</a>
       <a href="#" onclick="showView('family'); return false;">家系図をつくる</a>
       <button class="btn btn-primary btn-sm" onclick="startDiagnosis()">診断をはじめる</button>
+      <span class="auth-area" id="auth-area">
+        <button class="btn btn-ghost btn-sm" id="btn-login" onclick="tdnOpenLogin()" style="display:none;">ログイン</button>
+        <span class="auth-user-wrap" id="auth-user-wrap" style="display:none;">
+          <span class="auth-user-email" id="auth-user-email"></span>
+          <button class="btn btn-text" id="btn-logout" onclick="tdnLogout()">ログアウト</button>
+        </span>
+      </span>
     </nav>
   </div>
 </header>
@@ -402,9 +411,29 @@
       <p class="family-lead">
         相続の手続きや、信託銀行・士業への相談で必ず聞かれる「親族関係」。<br class="sp-br">
         名前と続柄を入れるだけで、家系図（相関図）をかんたんに作れます。<br class="sp-br">
-        入力した内容は、この端末のブラウザにだけ保存されます。
+        ログインすれば、どの端末からでも見られて、家族にも共有できます。
       </p>
     </div>
+
+    <!-- ログイン状態のバナー -->
+    <div class="family-auth-banner" id="family-auth-banner" style="display:none;"></div>
+
+    <!-- 自分の家系図 / 共有された家系図 タブ（ログイン時のみ） -->
+    <div class="family-tabs" id="family-tabs" style="display:none;">
+      <button class="family-tab active" id="tab-own" onclick="tdnShowOwn()">自分の家系図</button>
+      <button class="family-tab" id="tab-shared" onclick="tdnShowSharedList()">共有された家系図</button>
+    </div>
+
+    <!-- 共有された家系図の一覧（共有タブ選択時） -->
+    <div class="shared-list-wrap" id="shared-list-wrap" style="display:none;">
+      <p class="shared-list-title">あなたに共有された家系図</p>
+      <div class="shared-list" id="shared-list"></div>
+    </div>
+
+    <!-- 閲覧専用モードの注記 -->
+    <p class="family-readonly-note" id="family-readonly-note" style="display:none;">
+      👁 これは共有された家系図の<strong>閲覧専用</strong>表示です。編集・追加・削除はできません。
+    </p>
 
     <!-- 印刷専用ヘッダー（画面では非表示） -->
     <div class="family-print-head" id="family-print-head"></div>
@@ -417,7 +446,7 @@
       <div class="family-toolbar-right">
         <button class="btn btn-ghost btn-sm" onclick="familyPrint()">🖨 印刷／PDF</button>
         <button class="btn btn-ghost btn-sm" onclick="familyExportJson()">⬇ データ書き出し</button>
-        <button class="btn btn-text" onclick="familyClearAll()">すべて消す</button>
+        <button class="btn btn-text" id="btn-family-clear" onclick="familyClearAll()">すべて消す</button>
       </div>
     </div>
 
@@ -429,7 +458,7 @@
         家系図の中心になる方（多くの場合はご自身）から始めます。<br>
         登録すると、配偶者・お子さん・ご両親をどんどん足していけます。
       </p>
-      <button class="btn btn-primary btn-lg" onclick="familyAddRoot()">
+      <button class="btn btn-primary btn-lg" id="btn-family-addroot" onclick="familyAddRoot()">
         ご本人を登録する
         <span class="btn-arrow">→</span>
       </button>
@@ -449,6 +478,20 @@
       </p>
     </div>
 
+    <!-- 共有パネル（自分の家系図・ログイン時のみ表示） -->
+    <div class="family-share-panel" id="family-share-panel" style="display:none;">
+      <p class="family-share-title">👪 家族に共有する（閲覧のみ）</p>
+      <p class="family-share-desc">
+        共有したい方のメールアドレスを入れて招待します。相手が<strong>同じメールアドレスでログイン</strong>すると、この家系図を閲覧できます（編集はできません）。
+      </p>
+      <div class="family-share-form">
+        <input type="email" id="share-email" class="family-input" placeholder="例：family@example.com">
+        <button class="btn btn-primary btn-sm" onclick="tdnInvite()">招待する</button>
+      </div>
+      <p class="family-share-status" id="share-status"></p>
+      <div class="share-list" id="share-list"></div>
+    </div>
+
     <div class="family-actions">
       <button class="btn btn-text" onclick="showView('lp')">← トップへ戻る</button>
     </div>
@@ -456,7 +499,7 @@
     <div class="notice-box notice-box-small">
       <p class="notice-body">
         ※ この家系図は、考えを整理するための補助ツールです。法定相続情報一覧図など、公的な書類としての効力はありません。<br>
-        ※ 入力データはこの端末のブラウザ（localStorage）にのみ保存され、サーバーには送信されません。
+        ※ ログインすると入力データはクラウド（Supabase）に保存され、招待した家族と共有できます。未ログインのときは、この端末のブラウザ（localStorage）にのみ保存されます。
       </p>
     </div>
   </div>
@@ -524,6 +567,38 @@
         <button class="family-rel-btn family-rel-btn-full" onclick="familyAddRelative('sibling')">＋ 兄弟姉妹</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ログイン（マジックリンク） -->
+<div class="family-modal" id="login-modal" style="display:none;">
+  <div class="family-modal-overlay" onclick="tdnCloseLogin()"></div>
+  <div class="family-modal-panel">
+    <button class="family-modal-close" onclick="tdnCloseLogin()">✕</button>
+    <p class="family-modal-eyebrow">LOGIN</p>
+    <h3 class="family-modal-title">ログイン / 新規登録</h3>
+    <p class="login-lead">
+      メールアドレスとパスワードでログインします。<br>
+      はじめての方は「新規登録」を押してください。
+    </p>
+    <label class="family-field">
+      <span class="family-field-label">メールアドレス</span>
+      <input type="email" id="login-email" class="family-input" placeholder="例：you@example.com">
+    </label>
+    <label class="family-field">
+      <span class="family-field-label">パスワード（6文字以上）</span>
+      <input type="password" id="login-password" class="family-input" placeholder="パスワード">
+    </label>
+    <div class="login-btn-row">
+      <button class="btn btn-primary" onclick="tdnSignIn()">ログイン</button>
+      <button class="btn btn-ghost" onclick="tdnSignUp()">新規登録</button>
+    </div>
+    <p class="login-status" id="login-status"></p>
+    <p class="login-alt">
+      パスワードを使いたくない方は
+      <button class="login-link" onclick="tdnSendLink()">メールのリンクでログイン</button>
+      もできます。
+    </p>
   </div>
 </div>
 

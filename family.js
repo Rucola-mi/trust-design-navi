@@ -19,8 +19,14 @@ const familyState = {
   persons: [],          // person の配列
   rootId: null,         // 中心人物（本人）の id
   editingId: null,      // 編集中の person id（新規なら null）
-  pendingRelation: null // {type:'spouse'|'child'|'father'|'mother', baseId} 親族追加時にセット
+  pendingRelation: null,// {type:'spouse'|'child'|'father'|'mother', baseId} 親族追加時にセット
+  readOnly: false       // 共有された家系図を閲覧中は true（編集不可）
 };
+
+// ログイン中か（クラウド保存を使うか）。auth.js が window.TDN を用意する。
+function isCloudActive() {
+  return !!(window.TDN && window.TDN.state && window.TDN.state.user);
+}
 
 // ---------- person ファクトリ ----------
 function newPerson(over = {}) {
@@ -38,26 +44,46 @@ function newPerson(over = {}) {
 }
 
 // ---------- 保存・読込 ----------
-function familyLoad() {
+// localStorage からの読込（未ログイン時の「お試しモード」用）
+function familyLoadLocal() {
   try {
     const raw = localStorage.getItem(FAMILY_STORAGE_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
     familyState.persons = Array.isArray(data.persons) ? data.persons : [];
     familyState.rootId = data.rootId || (familyState.persons[0] && familyState.persons[0].id) || null;
+    familyState.readOnly = false;
   } catch (e) {
     console.warn('家系図データの読込に失敗:', e);
   }
 }
 
+// クラウドから渡されたデータを画面へ反映する（auth.js / db.js から呼ばれる）
+function familyApplyData(persons, rootId, opts) {
+  familyState.persons = Array.isArray(persons) ? persons : [];
+  familyState.rootId = rootId || (familyState.persons[0] && familyState.persons[0].id) || null;
+  familyState.readOnly = !!(opts && opts.readOnly);
+  familyRender();
+}
+
 function familySave() {
+  // 共有された家系図を閲覧中は保存しない
+  if (familyState.readOnly) return;
+
+  // ログイン中はクラウドへ（auth.js / db.js が担当）
+  if (isCloudActive()) {
+    window.TDN.db.saveCurrentTree();
+    return;
+  }
+
+  // 未ログインは従来通り localStorage に保存
   try {
     localStorage.setItem(FAMILY_STORAGE_KEY, JSON.stringify({
       persons: familyState.persons,
       rootId: familyState.rootId,
       savedAt: new Date().toISOString()
     }));
-    setSaveState('保存済み ✓');
+    setSaveState('この端末に保存 ✓');
   } catch (e) {
     console.warn('家系図データの保存に失敗:', e);
     setSaveState('保存に失敗');
@@ -204,6 +230,8 @@ function familyRender() {
   const canvasWrap = document.getElementById('family-canvas-wrap');
   const toolbar = document.getElementById('family-toolbar');
 
+  applyReadOnlyUI();
+
   if (familyState.persons.length === 0) {
     empty.style.display = '';
     canvasWrap.style.display = 'none';
@@ -249,13 +277,25 @@ function familyRender() {
   }
 }
 
+// 読み取り専用（共有された家系図の閲覧）時に編集系UIを抑止する
+function applyReadOnlyUI() {
+  const ro = familyState.readOnly;
+  const clearBtn = document.getElementById('btn-family-clear');
+  if (clearBtn) clearBtn.style.display = ro ? 'none' : '';
+  const addRoot = document.getElementById('btn-family-addroot');
+  if (addRoot) addRoot.style.display = ro ? 'none' : '';
+  const note = document.getElementById('family-readonly-note');
+  if (note) note.style.display = ro ? '' : 'none';
+}
+
 function buildCard(p, pos) {
   const card = document.createElement('div');
   card.className = 'fc-card gender-' + p.gender + (p.isDeceased ? ' is-deceased' : '') +
-    (p.id === familyState.rootId ? ' is-root' : '');
+    (p.id === familyState.rootId ? ' is-root' : '') + (familyState.readOnly ? ' is-readonly' : '');
   card.style.left = pos.x + 'px';
   card.style.top = pos.y + 'px';
-  card.onclick = () => familyOpenModal(p.id);
+  // 閲覧専用のときはクリックで編集モーダルを開かない
+  if (!familyState.readOnly) card.onclick = () => familyOpenModal(p.id);
 
   const genderMark = p.gender === 'M' ? '♂' : p.gender === 'F' ? '♀' : '◇';
   const name = p.name ? escapeHtml(p.name) : '（名前未入力）';
@@ -497,6 +537,7 @@ function addPath(svg, d, cls) {
 // モーダル（追加・編集）
 // ============================================================
 function familyAddRoot() {
+  if (familyState.readOnly) return;
   familyState.editingId = null;
   familyState.pendingRelation = null;
   openModalForm({ title: 'ご本人', eyebrow: '人物の登録', person: null, showRelatives: false, showDelete: false });
@@ -517,6 +558,7 @@ function familyOpenModal(personId) {
 }
 
 function familyAddRelative(type) {
+  if (familyState.readOnly) return;
   // いま編集中の人物を base にして、新規人物フォームへ切り替える
   const baseId = familyState.editingId;
   if (!baseId) return;
@@ -600,6 +642,7 @@ function readForm() {
 }
 
 function familySavePerson() {
+  if (familyState.readOnly) return;
   const data = readForm();
 
   if (familyState.editingId) {
@@ -691,6 +734,7 @@ function linkParentsAsCouple(child) {
 }
 
 function familyDeletePerson() {
+  if (familyState.readOnly) return;
   const id = familyState.editingId;
   if (!id || id === familyState.rootId) return;
   const p = getPerson(id);
@@ -715,6 +759,7 @@ function familyDeletePerson() {
 // ツールバー操作
 // ============================================================
 function familyClearAll() {
+  if (familyState.readOnly) return;
   if (familyState.persons.length === 0) return;
   if (!confirm('家系図のすべての人物を削除します。よろしいですか？')) return;
   familyState.persons = [];
@@ -791,10 +836,22 @@ function escapeHtml(s) {
   }[c]));
 }
 
+// ---------- クラウド連携（auth.js / db.js）から使う関数を公開 ----------
+window.familyState = familyState;
+window.familyLoadLocal = familyLoadLocal;
+window.familyApplyData = familyApplyData;
+// familyRender / setSaveState は関数宣言なので既に window に乗っている
+
 // ---------- 初期化 ----------
 document.addEventListener('DOMContentLoaded', () => {
-  familyLoad();
-  familyRender();
+  // クラウド連携が読み込まれていれば、ログイン状態に応じて読込・描画を任せる。
+  // 未読込（Supabase未設定など）なら従来通り localStorage から。
+  if (window.TDN && typeof window.TDN.boot === 'function') {
+    window.TDN.boot();
+  } else {
+    familyLoadLocal();
+    familyRender();
+  }
 
   // 性別ラジオの選択
   document.querySelectorAll('#ff-gender .family-radio').forEach(btn => {
