@@ -445,6 +445,52 @@ function computeLayout() {
   // 完全に孤立した人は末尾に並べる
   persons.forEach(p => { if (!placed.has(p.id)) { x[p.id] = cursor; cursor += STEP; placed.add(p.id); } });
 
+  // 3) 重なり解消パス（最終調整）
+  //    tidy tree 本体は重ならないが、補完配置（婚入した配偶者の親など）は
+  //    既存カードとの衝突を見ずに中央寄せするため、同じ世代で横に重なることがある。
+  //    ここで世代ごとに「夫婦＝1ユニット」を保ったまま左→右に詰め直し、重なりを除く。
+  //    既に十分離れているユニットは動かさない（正しく整列済みの配置を壊さない）。
+  {
+    const byGen = {};
+    persons.forEach(p => {
+      if (x[p.id] === undefined) return;
+      (byGen[gen[p.id]] = byGen[gen[p.id]] || []).push(p.id);
+    });
+
+    Object.values(byGen).forEach(ids => {
+      const idSet = new Set(ids);
+      const seen = new Set();
+      const units = [];
+
+      // 同世代で配偶者どうしを1つのユニットにまとめる
+      ids.forEach(id => {
+        if (seen.has(id)) return;
+        const members = [];
+        const stack = [id];
+        while (stack.length) {
+          const cur = stack.pop();
+          if (seen.has(cur)) continue;
+          seen.add(cur);
+          members.push(cur);
+          byId[cur].rels.spouses.forEach(s => { if (idSet.has(s) && !seen.has(s)) stack.push(s); });
+        }
+        members.sort((a, b) => x[a] - x[b]);  // ユニット内は現在の並び順を維持
+        units.push(members);
+      });
+
+      // ユニットを左端の位置順に並べ、左から重ならないように詰め直す
+      units.sort((a, b) => x[a[0]] - x[b[0]]);
+      let minLeft = -Infinity;  // 次のユニットが取れる最小の左x
+      units.forEach(members => {
+        let left = Math.max(x[members[0]], minLeft);  // 余裕があれば元の位置を尊重
+        let sx = left;
+        members.forEach(m => { x[m] = sx; sx += STEP; });
+        // このユニット末尾カードの右端 + H_GAP が、次ユニットの最小左x
+        minLeft = left + (members.length - 1) * STEP + CARD_W + H_GAP;
+      });
+    });
+  }
+
   // --- 座標を確定（左上を基準に正規化）---
   const minGen = Math.min(...persons.map(p => gen[p.id]));
   const maxGen = Math.max(...persons.map(p => gen[p.id]));
