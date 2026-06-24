@@ -38,7 +38,9 @@ function newPerson(over = {}) {
     deathYear: null,
     isDeceased: false,
     medicalNotes: '',
+    adopted: false,              // 養子・養女として迎えられた人（親子線を縦二重線で表示）
     rels: { spouses: [], father: null, mother: null, children: [] },
+    formerSpouses: [],           // 前妻・前夫の id（spouses とは別管理。線を点線で表示）
     ...over
   };
 }
@@ -53,6 +55,7 @@ function familyLoadLocal() {
     familyState.persons = Array.isArray(data.persons) ? data.persons : [];
     familyState.rootId = data.rootId || (familyState.persons[0] && familyState.persons[0].id) || null;
     familyState.readOnly = false;
+    normalizePersons();
   } catch (e) {
     console.warn('家系図データの読込に失敗:', e);
   }
@@ -63,6 +66,7 @@ function familyApplyData(persons, rootId, opts) {
   familyState.persons = Array.isArray(persons) ? persons : [];
   familyState.rootId = rootId || (familyState.persons[0] && familyState.persons[0].id) || null;
   familyState.readOnly = !!(opts && opts.readOnly);
+  normalizePersons();
   familyRender();
 }
 
@@ -97,6 +101,16 @@ function setSaveState(text) {
 
 function getPerson(id) {
   return familyState.persons.find(p => p.id === id) || null;
+}
+
+// 旧データ（v4以前）には adopted / formerSpouses が無いので、読込時に補完する。
+// これで描画・編集コードは常にフィールドが存在する前提で書ける（後方互換）。
+function normalizePersons() {
+  familyState.persons.forEach(p => {
+    if (typeof p.adopted !== 'boolean') p.adopted = false;
+    if (!Array.isArray(p.formerSpouses)) p.formerSpouses = [];
+    if (!p.rels) p.rels = { spouses: [], father: null, mother: null, children: [] };
+  });
 }
 
 // 代襲相続の見た目マーカー（描画のたびに再計算する一時データ）
@@ -157,8 +171,10 @@ function computeRelations() {
     if (id && id !== RID && byId[id] && label && labels[id] === undefined) labels[id] = label;
   };
 
-  // 配偶者
-  spousesOf(RID).forEach(s => set(s, g(s, '夫', '妻', '配偶者')));
+  // 配偶者（前妻・前夫は区別してラベルする）
+  const formerOfRoot = new Set(root.formerSpouses || []);
+  spousesOf(RID).forEach(s => set(s,
+    formerOfRoot.has(s) ? g(s, '前夫', '前妻', '元配偶者') : g(s, '夫', '妻', '配偶者')));
 
   // 祖先（父母→祖父母→曽祖父母…）
   let level = [RID], depth = 0; const anc = {};
@@ -376,8 +392,15 @@ function computeLayout() {
   function buildNode(primaryId) {
     if (placed.has(primaryId)) return null;
     placed.add(primaryId);
-    const members = [primaryId];
-    existSpouses(primaryId).forEach(s => { if (!placed.has(s)) { placed.add(s); members.push(s); } });
+    // 配偶者を本人の左右に振り分ける。
+    // ・前妻・前夫 … 本人の「左」／現在の配偶者 … 本人の「右」。
+    // 本人を中央に置くことで、各配偶者への線が必ず隣のカードへ直接引かれ、
+    // 間の配偶者カードを線が跨いで「別の二人が結ばれて見える」誤解を防ぐ。
+    const sps = existSpouses(primaryId).filter(s => !placed.has(s));
+    sps.forEach(s => placed.add(s));
+    const formers = sps.filter(s => isFormerCouple(primaryId, s));
+    const currents = sps.filter(s => !isFormerCouple(primaryId, s));
+    const members = [...formers, primaryId, ...currents];
 
     const childIds = [];
     const seen = new Set();
@@ -387,6 +410,17 @@ function computeLayout() {
           seen.add(c); childIds.push(c);
         }
       });
+    });
+    // 兄弟姉妹は「年長者を右側」に並べる（行政書士の家系図記入ルール）。
+    // x は右ほど大きいので、左→右で「年下→年長」になるよう生年で並べ替える。
+    // ・両者に生年がある場合のみ比較（年長＝生年が小さい＝右）。
+    // ・片方でも生年が無ければ 0 を返し、既存の登録順を保つ（安定ソート）。
+    // TODO(v6): 生年月日（月日）や明示的な表示順フィールドを持たせ、
+    //           生まれ年が同じ／未入力の兄弟も正しく整列できるようにする。
+    childIds.sort((a, b) => {
+      const ya = byId[a].birthYear, yb = byId[b].birthYear;
+      if (!ya || !yb) return 0;
+      return yb - ya;   // 年下(生年大)を左、年長(生年小)を右へ
     });
     const children = childIds.map(buildNode).filter(Boolean);
 
@@ -524,6 +558,8 @@ function drawLines(layout) {
   const center = id => ({ x: pos[id].x + CARD_W / 2, y: pos[id].y + CARD_H / 2 });
 
   // 夫婦線（横）— 重複を避けるためペアを記録
+  // ・現在の配偶者：二重線（行政書士ルール①）
+  // ・前妻・前夫：点線（同ルール⑤）。formerSpouses で判定する。
   const drawnCouples = new Set();
   familyState.persons.forEach(p => {
     if (!pos[p.id]) return;
@@ -533,7 +569,14 @@ function drawLines(layout) {
       if (drawnCouples.has(key)) return;
       drawnCouples.add(key);
       const a = center(p.id), b = center(sid);
-      addLine(svg, a.x, a.y, b.x, b.y, 'fc-line-spouse');
+      if (isFormerCouple(p.id, sid)) {
+        // 前妻・前夫：一本の点線で区別する
+        addLine(svg, a.x, a.y, b.x, b.y, 'fc-line-former');
+      } else {
+        // 現在の配偶者：横の二重線（中心線の上下に2px寄せた2本）
+        addLine(svg, a.x, a.y - 2.5, b.x, b.y - 2.5, 'fc-line-spouse');
+        addLine(svg, a.x, a.y + 2.5, b.x, b.y + 2.5, 'fc-line-spouse');
+      }
     });
   });
 
@@ -556,11 +599,28 @@ function drawLines(layout) {
     const cx = pos[child.id].x + CARD_W / 2;
     const cy = pos[child.id].y;
     const midY = (py + cy) / 2;
+    const d = `M ${px} ${py} L ${px} ${midY} L ${cx} ${midY} L ${cx} ${cy}`;
     // 親のいずれかが「先に亡くなった相続人」なら、この線は代襲ライン
     const isDaishuu = parents.some(pid => _daishuu.edges.has(pid + '>' + child.id));
-    addPath(svg, `M ${px} ${py} L ${px} ${midY} L ${cx} ${midY} L ${cx} ${cy}`,
-      isDaishuu ? 'fc-line-daishuu' : 'fc-line-parent');
+    if (isDaishuu) {
+      addPath(svg, d, 'fc-line-daishuu');
+    } else if (child.adopted) {
+      // 養子・養女：縦の二重線（行政書士ルール③）。
+      // 子側の縦線が二重に見えるよう、子寄りの縦区間を左右±2.5pxにずらした2本を引く。
+      addPath(svg, `M ${px} ${py} L ${px} ${midY} L ${cx - 2.5} ${midY} L ${cx - 2.5} ${cy}`, 'fc-line-parent');
+      addPath(svg, `M ${px} ${py} L ${px} ${midY} L ${cx + 2.5} ${midY} L ${cx + 2.5} ${cy}`, 'fc-line-parent');
+    } else {
+      // 実子：縦の一本線（同ルール②）
+      addPath(svg, d, 'fc-line-parent');
+    }
   });
+}
+
+// この2人が「前妻・前夫」の関係か（どちらかが相手を formerSpouses に持てば前配偶者）
+function isFormerCouple(aId, bId) {
+  const a = getPerson(aId), b = getPerson(bId);
+  return !!((a && (a.formerSpouses || []).includes(bId)) ||
+            (b && (b.formerSpouses || []).includes(aId)));
 }
 
 function addLine(svg, x1, y1, x2, y2, cls) {
@@ -629,11 +689,12 @@ function familyAddRelative(type) {
     eyebrow: '親族の追加',
     person: preset.gender ? { ...newPerson(), gender: preset.gender } : null,
     showRelatives: false,
-    showDelete: false
+    showDelete: false,
+    showFormer: type === 'spouse'   // 配偶者追加のときだけ「前妻・前夫」選択を出す
   });
 }
 
-function openModalForm({ title, eyebrow, person, showRelatives, showDelete }) {
+function openModalForm({ title, eyebrow, person, showRelatives, showDelete, showFormer }) {
   document.getElementById('family-modal-title').textContent = title;
   document.getElementById('family-modal-eyebrow').textContent = eyebrow;
 
@@ -642,6 +703,12 @@ function openModalForm({ title, eyebrow, person, showRelatives, showDelete }) {
   document.getElementById('ff-death').value = person && person.deathYear ? person.deathYear : '';
   document.getElementById('ff-deceased').checked = person ? !!person.isDeceased : false;
   document.getElementById('ff-medical').value = person ? (person.medicalNotes || '') : '';
+  document.getElementById('ff-adopted').checked = person ? !!person.adopted : false;
+
+  // 前妻・前夫チェックは「配偶者を追加」する時だけ表示し、毎回オフから始める
+  const formerWrap = document.getElementById('ff-former-wrap');
+  if (formerWrap) formerWrap.style.display = showFormer ? '' : 'none';
+  document.getElementById('ff-former').checked = false;
 
   // 性別ラジオ
   const g = person ? person.gender : 'other';
@@ -675,6 +742,7 @@ function readForm() {
   const deathYear = parseInt(document.getElementById('ff-death').value, 10);
   const isDeceased = document.getElementById('ff-deceased').checked || !!deathYear;
   const medicalNotes = document.getElementById('ff-medical').value.trim();
+  const adopted = document.getElementById('ff-adopted').checked;
   const genderBtn = document.querySelector('#ff-gender .family-radio.selected');
   const gender = genderBtn ? genderBtn.dataset.gender : 'other';
   return {
@@ -683,7 +751,8 @@ function readForm() {
     birthYear: isNaN(birthYear) ? null : birthYear,
     deathYear: isNaN(deathYear) ? null : deathYear,
     isDeceased,
-    medicalNotes
+    medicalNotes,
+    adopted
   };
 }
 
@@ -705,7 +774,9 @@ function familySavePerson() {
     }
 
     if (familyState.pendingRelation) {
-      linkRelative(familyState.pendingRelation, p);
+      // 配偶者追加時の「前妻・前夫」チェックを関係付けに渡す
+      const former = document.getElementById('ff-former').checked;
+      linkRelative(familyState.pendingRelation, p, { former });
     }
   }
 
@@ -715,13 +786,19 @@ function familySavePerson() {
 }
 
 // 親族の関係付け
-function linkRelative(rel, person) {
+function linkRelative(rel, person, opts = {}) {
   const base = getPerson(rel.baseId);
   if (!base) return;
 
   if (rel.type === 'spouse') {
+    // レイアウト・続柄・子の親判定のため spouses には常に入れる。
+    // 前妻・前夫のときは formerSpouses にも記録し、線を点線で描き分ける。
     base.rels.spouses.push(person.id);
     person.rels.spouses.push(base.id);
+    if (opts.former) {
+      base.formerSpouses.push(person.id);
+      person.formerSpouses.push(base.id);
+    }
 
   } else if (rel.type === 'child') {
     // base を親に。性別で父母スロットを決める
@@ -791,6 +868,7 @@ function familyDeletePerson() {
   familyState.persons.forEach(other => {
     other.rels.spouses = other.rels.spouses.filter(x => x !== id);
     other.rels.children = other.rels.children.filter(x => x !== id);
+    if (Array.isArray(other.formerSpouses)) other.formerSpouses = other.formerSpouses.filter(x => x !== id);
     if (other.rels.father === id) other.rels.father = null;
     if (other.rels.mother === id) other.rels.mother = null;
   });

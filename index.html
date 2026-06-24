@@ -471,6 +471,38 @@
         <!-- 人物カードが動的に配置される -->
       </div>
       <p class="family-canvas-hint">カードをクリックすると、編集・親族の追加ができます。</p>
+
+      <!-- 関係線の凡例（行政書士の家系図記入ルールに準拠） -->
+      <div class="family-legend" id="family-legend">
+        <span class="family-legend-title">線の見かた</span>
+        <span class="family-legend-item">
+          <svg class="family-legend-swatch" viewBox="0 0 40 14" aria-hidden="true">
+            <line class="fc-line-spouse" x1="2" y1="5" x2="38" y2="5"></line>
+            <line class="fc-line-spouse" x1="2" y1="9" x2="38" y2="9"></line>
+          </svg>
+          夫婦（二重線）
+        </span>
+        <span class="family-legend-item">
+          <svg class="family-legend-swatch" viewBox="0 0 40 14" aria-hidden="true">
+            <line class="fc-line-parent" x1="20" y1="1" x2="20" y2="13"></line>
+          </svg>
+          親子（縦の一本線）
+        </span>
+        <span class="family-legend-item">
+          <svg class="family-legend-swatch" viewBox="0 0 40 14" aria-hidden="true">
+            <line class="fc-line-parent" x1="17.5" y1="1" x2="17.5" y2="13"></line>
+            <line class="fc-line-parent" x1="22.5" y1="1" x2="22.5" y2="13"></line>
+          </svg>
+          養子（縦の二重線）
+        </span>
+        <span class="family-legend-item">
+          <svg class="family-legend-swatch" viewBox="0 0 40 14" aria-hidden="true">
+            <line class="fc-line-former" x1="2" y1="7" x2="38" y2="7"></line>
+          </svg>
+          前妻・前夫（点線）
+        </span>
+      </div>
+
       <p class="family-daishuu-note" id="family-daishuu-note" style="display:none;">
         <span class="family-daishuu-swatch"></span>
         金色の点線は<strong>代襲相続</strong>を表します。相続人になるはずの方（お子さん・ご兄弟姉妹）が先に亡くなっている場合、その子が代わりに相続することがあります。<br>
@@ -542,6 +574,17 @@
       <label class="family-field family-field-check">
         <input type="checkbox" id="ff-deceased">
         <span>すでに亡くなっている</span>
+      </label>
+
+      <label class="family-field family-field-check">
+        <input type="checkbox" id="ff-adopted">
+        <span>養子・養女として迎えられた（親子線を二重線で表示）</span>
+      </label>
+
+      <!-- 配偶者の追加時のみ表示（family.js が出し入れ） -->
+      <label class="family-field family-field-check" id="ff-former-wrap" style="display:none;">
+        <input type="checkbox" id="ff-former">
+        <span>前妻・前夫として登録する（点線で表示）</span>
       </label>
 
       <label class="family-field" id="ff-medical-wrap" style="display:none;">
