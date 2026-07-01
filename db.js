@@ -184,3 +184,110 @@ export async function openSharedTree(treeId) {
   window.TDN.state.readOnly = true;
   applyData(data.data, { readOnly: true });
 }
+
+// ============================================================
+// 診断結果の保存（v7.5 追加）
+// ・user_records テーブルに type='diagnosis' で保存する。
+// ・ログイン時はクラウド、未ログイン時は localStorage（お試しモード）。
+// ・データ構造は { answers, priorityThemeId, priorityThemeIds,
+//   themeVersion, completedAt }。テーマ本体は THEMES から id で参照。
+// ============================================================
+
+const LOCAL_DIAGNOSIS_KEY = 'tdn_diagnosis_history_v1';
+
+function currentUser() {
+  return window.TDN && window.TDN.state && window.TDN.state.user;
+}
+
+// ---- 診断結果を1件保存 ----
+// snapshot: { answers: string[], priorityThemeId: number|null, priorityThemeIds: number[] }
+export async function saveDiagnosis(snapshot) {
+  const payload = {
+    ...snapshot,
+    themeVersion: 'v7.5',
+    completedAt: new Date().toISOString()
+  };
+
+  const user = currentUser();
+  if (!user) return saveDiagnosisLocal(payload);
+
+  const { data, error } = await supabase
+    .from('user_records')
+    .insert({
+      user_id: user.id,
+      type: 'diagnosis',
+      title: '終活リテラシー診断',
+      data: payload
+    })
+    .select('id')
+    .single();
+
+  if (error) { console.error('診断結果の保存失敗:', error); return { error: error.message }; }
+  return { id: data.id, savedTo: 'cloud' };
+}
+
+// ---- 自分の診断履歴を一覧取得（新しい順） ----
+export async function listMyDiagnoses() {
+  const user = currentUser();
+  if (!user) return listDiagnosesLocal();
+
+  const { data, error } = await supabase
+    .from('user_records')
+    .select('id, title, data, created_at')
+    .eq('user_id', user.id)
+    .eq('type', 'diagnosis')
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error('診断履歴の取得失敗:', error); return []; }
+  return data || [];
+}
+
+// ---- 特定の診断結果を取得 ----
+export async function getDiagnosis(recordId) {
+  const user = currentUser();
+  if (!user) return getDiagnosisLocal(recordId);
+
+  const { data, error } = await supabase
+    .from('user_records')
+    .select('id, title, data, created_at')
+    .eq('id', recordId)
+    .eq('user_id', user.id)
+    .eq('type', 'diagnosis')
+    .single();
+
+  if (error) { console.error('診断の取得失敗:', error); return null; }
+  return data;
+}
+
+// ---- localStorage 版（未ログイン時のフォールバック） ----
+function saveDiagnosisLocal(payload) {
+  try {
+    const list = listDiagnosesLocal();
+    const item = {
+      id: 'local_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7),
+      title: '終活リテラシー診断',
+      data: payload,
+      created_at: new Date().toISOString()
+    };
+    list.unshift(item);
+    localStorage.setItem(LOCAL_DIAGNOSIS_KEY, JSON.stringify(list));
+    return { id: item.id, savedTo: 'local' };
+  } catch (e) {
+    console.warn('診断のローカル保存失敗:', e);
+    return { error: e.message };
+  }
+}
+
+function listDiagnosesLocal() {
+  try {
+    const raw = localStorage.getItem(LOCAL_DIAGNOSIS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    console.warn('診断のローカル取得失敗:', e);
+    return [];
+  }
+}
+
+function getDiagnosisLocal(id) {
+  return listDiagnosesLocal().find(x => x.id === id) || null;
+}

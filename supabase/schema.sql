@@ -101,3 +101,42 @@ drop policy if exists "invitee read own share" on tree_shares;
 create policy "invitee read own share" on tree_shares
   for select
   using (lower(shared_email) = lower(auth.jwt() ->> 'email'));
+
+-- ============================================================
+-- user_records テーブル（v7.5 追加）
+-- ・診断結果、デジタル遺品リスト、任意後見メモなど、ユーザー個人の
+--   多様な記録を `type` で区別して1テーブルにまとめて保存する。
+-- ・type 例：'diagnosis' | 'digital_legacy' | 'sns_after' |
+--            'crypto_memo' | 'koken_memo' など（アプリ側で規約管理）
+-- ・データ本体は data(JSONB) に格納。type ごとに構造は異なる。
+-- ・本人のみアクセス可（RLS）。共有は Phase 2 以降で別途検討。
+-- ============================================================
+
+create table if not exists user_records (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references auth.users(id) on delete cascade,
+  type        text not null,
+  title       text,
+  data        jsonb not null default '{}'::jsonb,
+  updated_at  timestamptz not null default now(),
+  created_at  timestamptz not null default now()
+);
+
+-- よく使う「自分の type 別記録を新しい順に」向けの複合インデックス
+create index if not exists idx_user_records_user_type
+  on user_records(user_id, type, updated_at desc);
+
+-- updated_at 自動更新（既存の set_updated_at() を再利用）
+drop trigger if exists trg_user_records_updated on user_records;
+create trigger trg_user_records_updated
+  before update on user_records
+  for each row execute function set_updated_at();
+
+-- RLS：本人のみ全操作可
+alter table user_records enable row level security;
+
+drop policy if exists "owner full access" on user_records;
+create policy "owner full access" on user_records
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
