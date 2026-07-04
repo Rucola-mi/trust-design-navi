@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- TDN prototype v2 / 2026-07-04 network map -->
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -23,7 +24,7 @@
       <a href="#about" onclick="scrollToSection('about'); return false;">サービスについて</a>
       <a href="#themes" onclick="scrollToSection('themes'); return false;">6つのテーマ</a>
       <a href="#flow" onclick="scrollToSection('flow'); return false;">使い方</a>
-      <a href="#" onclick="showView('family'); return false;">家系図をつくる</a>
+      <a href="#" onclick="showNetworkView(); return false;">関係性マップ</a>
       <a href="#" onclick="showHistoryView(); return false;">履歴</a>
       <button class="btn btn-primary btn-sm" onclick="startDiagnosis()">診断をはじめる</button>
       <span class="auth-area" id="auth-area">
@@ -509,13 +510,54 @@
     </div>
 
     <div class="family-actions">
-      <button class="btn btn-text" onclick="showView('lp')">← トップへ戻る</button>
+      <button class="btn btn-ghost btn-sm" onclick="showNetworkView()">← 関係性マップへ戻る</button>
+      <button class="btn btn-text" onclick="showView('lp')">トップへ戻る</button>
     </div>
 
     <div class="notice-box notice-box-small">
       <p class="notice-body">
         ※ この家系図は、考えを整理するための補助ツールです。法定相続情報一覧図など、公的な書類としての効力はありません。<br>
         ※ ログインすると入力データはクラウド（Supabase）に保存され、招待した家族と共有できます。未ログインのときは、この端末のブラウザ（localStorage）にのみ保存されます。
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============== Network（関係性マップ） ============== -->
+<section id="view-network" class="view">
+  <div class="container">
+    <div class="network-header">
+      <p class="section-eyebrow">RELATIONSHIP MAP</p>
+      <h2 class="network-title">関係性マップ</h2>
+      <p class="network-lead">
+        これからの安心を支えてくれるのは、家族だけではありません。<br class="sp-br">
+        友人・専門家・地域・サービスなど、あなたの「託せる相手」を一枚の地図にしましょう。<br class="sp-br">
+        相続に関わる親族関係は、家系図としていつでも単独で取り出せます。
+      </p>
+    </div>
+
+    <!-- 中心（本人）ハブ -->
+    <div class="network-hub">
+      <div class="network-hub-node">
+        <span class="network-hub-label">中心</span>
+        <span class="network-hub-name" id="network-hub-name">本人</span>
+      </div>
+      <div class="network-hub-stem" aria-hidden="true"></div>
+    </div>
+
+    <!-- 6ブランチ -->
+    <div class="network-branches" id="network-branches">
+      <!-- network.js が動的に生成 -->
+    </div>
+
+    <div class="network-actions">
+      <button class="btn btn-text" onclick="showView('lp')">← トップへ戻る</button>
+    </div>
+
+    <div class="notice-box notice-box-small">
+      <p class="notice-body">
+        ※ 関係性マップは、考えを整理するための補助ツールです。ここに登録した内容が法的な効力を持つものではありません。<br>
+        ※ 家族以外の方の情報は、この端末のブラウザ（localStorage）にのみ保存されます。親族関係（家系図）とは分けて管理されます。
       </p>
     </div>
   </div>
@@ -630,6 +672,33 @@
   </div>
 </div>
 
+<!-- 関係性マップ 人物追加・編集モーダル -->
+<div class="family-modal" id="network-modal" style="display:none;">
+  <div class="family-modal-overlay" onclick="networkCloseModal()"></div>
+  <div class="family-modal-panel">
+    <button class="family-modal-close" onclick="networkCloseModal()">✕</button>
+    <p class="family-modal-eyebrow">関係性マップ</p>
+    <h3 class="family-modal-title" id="network-modal-title">追加</h3>
+
+    <div class="family-form">
+      <label class="family-field">
+        <span class="family-field-label">お名前（ニックネーム・事業者名可）</span>
+        <input type="text" id="nf-name" class="family-input" placeholder="例：田中さん／○○事務所">
+      </label>
+
+      <label class="family-field">
+        <span class="family-field-label">役割・メモ（任意）</span>
+        <input type="text" id="nf-role" class="family-input" placeholder="例：行政書士。デジタル遺品の相談先">
+      </label>
+
+      <div class="family-form-actions">
+        <button class="btn btn-primary" onclick="networkSavePerson()">保存する</button>
+        <button class="btn btn-text" id="nf-delete" onclick="networkDeletePerson()" style="display:none;">この人を削除</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ログイン（マジックリンク） -->
 <div class="family-modal" id="login-modal" style="display:none;">
   <div class="family-modal-overlay" onclick="tdnCloseLogin()"></div>
@@ -679,5 +748,6 @@
 
 <script src="app.js"></script>
 <script src="family.js"></script>
+<script src="network.js"></script>
 </body>
 </html>
