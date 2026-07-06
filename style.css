@@ -525,6 +525,61 @@ a { color: inherit; text-decoration: none; }
 .notice-box-small { padding: 16px 20px; margin-top: 40px; }
 .notice-box-small .notice-body { font-size: 12px; }
 
+/* ============== Newsletter CTA ============== */
+.section-newsletter { padding: 32px 0 64px; }
+.newsletter-cta {
+  background: var(--cream-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 40px 32px;
+  max-width: 720px;
+  margin: 48px auto 0;
+  text-align: center;
+}
+.newsletter-cta-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 20px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+.newsletter-cta-desc {
+  font-size: 14px;
+  color: var(--text-l);
+  line-height: 1.9;
+  margin-bottom: 24px;
+}
+.newsletter-cta-note {
+  font-size: 12px;
+  color: var(--text-l);
+  margin-top: 12px;
+  opacity: 0.8;
+}
+.newsletter-cta-lp { margin-top: 0; padding: 56px 40px; }
+.newsletter-cta-lp .newsletter-cta-title { font-size: 26px; }
+.newsletter-cta-chat {
+  margin: 24px 0 0;
+  max-width: none;
+  padding: 28px 24px;
+}
+.newsletter-cta-chat .newsletter-cta-title { font-size: 17px; }
+
+/* footer links */
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin-bottom: 32px;
+}
+.footer-links a {
+  font-size: 13px;
+  color: rgba(255,255,255,0.85);
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+  padding-bottom: 2px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.footer-links a:hover { color: var(--sage-l); border-color: var(--sage-l); }
+
 /* ============== Diagnosis ============== */
 #view-diagnosis { padding: 64px 0 96px; min-height: 80vh; }
 .diagnosis-header { text-align: center; margin-bottom: 48px; }

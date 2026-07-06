@@ -2,6 +2,27 @@
 // Trust Design Navi — Prototype Logic
 // ============================================================
 
+// ---------- 外部リンク（Newsletter・問い合わせ） ----------
+// URLの差し替えはここ1箇所のみ。将来Newsletterサービスに移行する場合もここを変える。
+const NEWSLETTER_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSczU0cZudsY10A4q0kqxXj3Y3MjUxuGwuHDfVc3V6Af_2jFoQ/viewform';
+const CONTACT_URL = NEWSLETTER_URL; // 有料サービス問い合わせ用（当面はNewsletterと同じフォーム）
+
+// CTAクリックの簡易計測（どの位置のCTAが効くかの検証用。localStorageに記録）
+function trackCta(placement) {
+  try {
+    const key = 'tdn_cta_clicks';
+    const logs = JSON.parse(localStorage.getItem(key) || '[]');
+    logs.push({ placement, at: new Date().toISOString() });
+    localStorage.setItem(key, JSON.stringify(logs));
+  } catch (e) { /* 計測失敗は無視 */ }
+}
+
+// CTAクリック：計測してから新しいタブで開く
+function openNewsletter(placement) {
+  trackCta(placement);
+  window.open(NEWSLETTER_URL, '_blank', 'noopener');
+}
+
 // ---------- データ：6テーマ（v7.5） ----------
 // 各テーマに「最初に知るとよいこと」「調べる入口」「話す前に考えておくこと」を持つ。
 // v7 までの旧 10 テーマを 6 テーマに統合し、`beforeFamily` を `beforeTalking` に改名。
@@ -616,6 +637,22 @@ function showChatFinal() {
         </div>
       `;
       win.appendChild(card);
+
+      // Newsletter CTA（今日の整理を続きにつなげる導線）
+      const cta = document.createElement('div');
+      cta.className = 'newsletter-cta newsletter-cta-chat';
+      cta.innerHTML = `
+        <p class="newsletter-cta-title">今日の整理を、続きにつなげませんか</p>
+        <p class="newsletter-cta-desc">
+          週1回のNewsletterで、終活リテラシーのヒントを少しずつお届けしています。<br>
+          学びを続けたい方向けのコミュニティも準備中です。
+        </p>
+        <button class="btn btn-primary" onclick="openNewsletter('chat_final')">
+          Newsletterを受け取る（無料）
+          <span class="btn-arrow">→</span>
+        </button>
+      `;
+      win.appendChild(cta);
       win.scrollTop = win.scrollHeight;
 
       // 別の優先テーマも提示する場合
