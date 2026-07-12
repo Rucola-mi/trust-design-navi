@@ -342,29 +342,19 @@
       <h2 class="result-title">あなたの終活リテラシーマップ</h2>
       <p class="result-sub-title">優先して学ぶとよさそうなテーマ</p>
       <p class="result-description">
-        この診断は、終活の正解を決めるものではありません。<br>
-        6テーマのうち、今の自分にとって知識が少ない領域や、<br>
-        気になっているけれど入口が見えにくい領域を見つけるためのものです。<br>
-        まずは「学ぶ」ことから、自分らしいこれからの安心づくりを始めていきましょう。
+        正解を決める診断ではありません。今のあなたが<br class="sp-br">「どこから学び始めると安心か」を見つけるためのマップです。
       </p>
     </div>
 
-    <!-- Literacy Map -->
+    <!-- Literacy Map（各セルに状態ラベルを色付きで表示するため、凡例は置かない） -->
     <div class="literacy-map">
       <h3 class="result-section-title">6テーマの今の状態</h3>
-      <div class="map-legend">
-        <span class="legend-item legend-a"><span class="legend-dot"></span>知識が少ない</span>
-        <span class="legend-item legend-b"><span class="legend-dot"></span>入口が見えにくい</span>
-        <span class="legend-item legend-c"><span class="legend-dot"></span>少し調べた</span>
-        <span class="legend-item legend-d"><span class="legend-dot"></span>考え始めている</span>
-        <span class="legend-item legend-e"><span class="legend-dot"></span>共有・相談している</span>
-      </div>
       <div class="map-grid" id="literacy-map-grid">
         <!-- 動的に生成 -->
       </div>
     </div>
 
-    <!-- Priority -->
+    <!-- Priority + Next Step（優先テーマと次の一歩を1ブロックに統合） -->
     <div class="result-priority">
       <h3 class="result-section-title" id="priority-title">今、優先して学ぶとよさそうなテーマ</h3>
       <p class="result-priority-lead" id="priority-lead">
@@ -373,21 +363,7 @@
       <div class="priority-list" id="priority-list">
         <!-- 動的に生成 -->
       </div>
-    </div>
-
-    <!-- Grouped Detail -->
-    <div class="result-detail">
-      <h3 class="result-section-title">状態ごとに見るテーマ</h3>
-      <div class="group-sections" id="group-sections">
-        <!-- 動的に生成 -->
-      </div>
-    </div>
-
-    <!-- Next Step -->
-    <div class="result-next">
-      <h3 class="result-section-title">優先テーマを学ぶための、次の小さな一歩</h3>
-      <div class="next-step-card">
-        <p class="next-step-icon">🌱</p>
+      <div class="priority-next">
         <p class="next-step-body" id="next-step-body">
           AIナビゲーターが、最初に知るとよいことや、調べる入口、家族と話す前に考えておくことをやさしく整理します。
         </p>
@@ -397,6 +373,14 @@
         </button>
       </div>
     </div>
+
+    <!-- Grouped Detail（マップと同じ情報の再掲のため、折りたたみで提供） -->
+    <details class="result-detail">
+      <summary class="result-detail-summary">状態ごとの詳しい見かたを開く</summary>
+      <div class="group-sections" id="group-sections">
+        <!-- 動的に生成 -->
+      </div>
+    </details>
 
     <!-- Newsletter CTA -->
     <div class="newsletter-cta">
