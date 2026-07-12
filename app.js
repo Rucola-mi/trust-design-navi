@@ -144,10 +144,45 @@ const state = {
 
 // ---------- View切り替え ----------
 function showView(name) {
+  closeMobileNav();
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   const target = document.getElementById('view-' + name);
   if (target) target.classList.add('active');
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ---------- モバイルナビ（ハンバーガーメニュー） ----------
+function toggleMobileNav() {
+  const menu = document.getElementById('mobile-nav');
+  const btn = document.getElementById('nav-toggle');
+  if (!menu) return;
+  const open = menu.classList.toggle('open');
+  if (btn) {
+    btn.setAttribute('aria-expanded', String(open));
+    btn.setAttribute('aria-label', open ? 'メニューを閉じる' : 'メニューを開く');
+  }
+}
+
+function closeMobileNav() {
+  const menu = document.getElementById('mobile-nav');
+  const btn = document.getElementById('nav-toggle');
+  if (menu) menu.classList.remove('open');
+  if (btn) {
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', 'メニューを開く');
+  }
+}
+
+// LP以外のビューからでも、LPの指定セクションへ移動できるようにする
+function goToLpSection(id) {
+  const lp = document.getElementById('view-lp');
+  if (lp && !lp.classList.contains('active')) {
+    showView('lp');
+    setTimeout(() => scrollToSection(id), 80);
+  } else {
+    closeMobileNav();
+    scrollToSection(id);
+  }
 }
 
 function scrollToSection(id) {

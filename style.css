@@ -84,6 +84,37 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 768px) {
   .nav a { display: none; }
   .nav .btn { display: inline-flex; }
+  .nav { gap: 12px; }
+}
+
+/* ---- モバイルナビ（ハンバーガー） ---- */
+.nav-toggle {
+  display: none;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--sage-d);
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.nav-toggle:hover { background: var(--cream-2); }
+.mobile-nav {
+  display: none;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  background: var(--cream);
+  padding: 4px 24px 12px;
+}
+.mobile-nav a {
+  padding: 13px 4px;
+  font-size: 15px;
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+}
+.mobile-nav a:last-child { border-bottom: none; }
+.mobile-nav a:active { color: var(--sage-d); }
+@media (max-width: 768px) {
+  .nav-toggle { display: inline-flex; }
+  .mobile-nav.open { display: flex; }
 }
 
 /* ============== Buttons ============== */
@@ -468,39 +499,79 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 900px) { .themes-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 480px) { .themes-grid { grid-template-columns: repeat(2, 1fr); } }
 
-/* ============== Flow ============== */
-.section-flow { text-align: center; }
-.flow-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-  margin-bottom: 56px;
-  text-align: left;
+/* ============== Flow（使い方：矢印でつなぐ図解） ============== */
+.section-flow {
+  text-align: center;
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+  padding: 72px 0;
 }
-.flow-card {
-  padding: 32px;
-  background: var(--cream-2);
-  border-radius: var(--radius-md);
+.section-flow .section-lead { margin-bottom: 40px; }
+.flow-diagram {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  max-width: 960px;
+  margin: 0 auto 48px;
+}
+.flow-step {
   position: relative;
+  flex: 1;
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 32px 22px 26px;
+  text-align: center;
 }
-.flow-num {
+.flow-step-badge {
+  position: absolute;
+  top: -13px;
+  right: 16px;
+  background: var(--peach);
+  color: var(--white);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 14px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+.flow-step-icon { display: block; font-size: 36px; margin-bottom: 10px; }
+.flow-step-label {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--sage-d);
+  margin-bottom: 6px;
+}
+.flow-step-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+.flow-step-desc { font-size: 13.5px; color: var(--text-l); line-height: 1.9; }
+.flow-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px; height: 44px;
-  border-radius: 50%;
-  background: var(--sage);
-  color: var(--white);
-  font-family: 'Noto Serif JP', serif;
-  font-size: 20px;
-  margin-bottom: 20px;
+  flex: 0 0 auto;
+  color: var(--sage);
+  font-size: 26px;
+  padding: 0 2px;
 }
-.flow-card h3 { font-size: 18px; margin-bottom: 12px; }
-.flow-card p { font-size: 14px; color: var(--text-l); line-height: 1.9; }
-.flow-cta { text-align: center; }
+.flow-arrow::before { content: '→'; }
+.flow-cta {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.flow-cta-note { font-size: 12px; color: var(--text-l); }
 
 @media (max-width: 768px) {
-  .flow-grid { grid-template-columns: 1fr; }
+  .section-flow { padding: 56px 0; }
+  .flow-diagram { flex-direction: column; gap: 6px; max-width: 420px; }
+  .flow-arrow { padding: 2px 0; }
+  .flow-arrow::before { content: '↓'; }
 }
 
 /* ============== Notice ============== */
@@ -582,6 +653,66 @@ a { color: inherit; text-decoration: none; }
 
 /* ============== Diagnosis ============== */
 #view-diagnosis { padding: 64px 0 96px; min-height: 80vh; }
+/* ============== Journey stepper（診断 › 結果 › 対話） ============== */
+.journey {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding-top: 40px;
+  margin-bottom: 32px;
+}
+.journey-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--text-l);
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 16px 5px 6px;
+  white-space: nowrap;
+}
+.journey-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--text-l);
+  background: var(--white);
+}
+.journey-step.is-active {
+  background: var(--sage);
+  border-color: var(--sage);
+  color: var(--white);
+  font-weight: 500;
+}
+.journey-step.is-active .journey-num {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--sage-d);
+}
+.journey-step.is-done {
+  border-color: var(--sage-l);
+  color: var(--sage-d);
+}
+.journey-step.is-done .journey-num {
+  background: var(--sage-l);
+  border-color: var(--sage-l);
+  color: var(--white);
+}
+.journey-arrow { color: var(--sage-l); font-size: 15px; }
+@media (max-width: 480px) {
+  .journey { gap: 6px; padding-top: 32px; }
+  .journey-step { font-size: 12px; padding: 4px 12px 4px 5px; }
+  .journey-num { width: 18px; height: 18px; }
+}
+
 .diagnosis-header { text-align: center; margin-bottom: 48px; }
 .diagnosis-step {
   font-size: 13px;
