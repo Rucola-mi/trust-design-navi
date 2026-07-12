@@ -4,6 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
 <title>Trust Design Navi｜これからの安心を、自分でデザインする</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,6 +45,8 @@
     <a href="#about" onclick="goToLpSection('about'); return false;">サービスについて</a>
     <a href="#" onclick="closeMobileNav(); showNetworkView(); return false;">関係性マップ</a>
     <a href="#" onclick="closeMobileNav(); showHistoryView(); return false;">履歴</a>
+    <a href="#" id="mobile-login" onclick="closeMobileNav(); tdnOpenLogin(); return false;" style="display:none;">ログイン</a>
+    <a href="#" id="mobile-logout" onclick="closeMobileNav(); tdnLogout(); return false;" style="display:none;">ログアウト</a>
   </nav>
 </header>
 

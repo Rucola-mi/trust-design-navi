@@ -87,6 +87,12 @@ function updateHeaderUI(user) {
   show($('btn-login'), !user);
   show($('auth-user-wrap'), !!user);
   if (user && $('auth-user-email')) $('auth-user-email').textContent = user.email || 'ログイン中';
+  // モバイルメニュー内のログイン/ログアウトも連動して切り替える
+  show($('mobile-login'), !user);
+  show($('mobile-logout'), !!user);
+  if (user && $('mobile-logout')) {
+    $('mobile-logout').textContent = 'ログアウト（' + (user.email || 'ログイン中') + '）';
+  }
 }
 
 function setBannerLoggedIn(email) {
