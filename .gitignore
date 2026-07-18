@@ -5,3 +5,7 @@ package-lock.json
 *.log
 .env
 .env.local
+
+# ローカル専用（リポジトリに含めない）
+docs/NETA_CHO.md
+docs/20260716poster/
